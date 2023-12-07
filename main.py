@@ -1,10 +1,11 @@
-import sys
+import sys, random
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget, QStackedWidget
 from PyQt5.uic import loadUi  # Import loadUi to load .ui files
 
 temp_data = []
 review_queue = [{'concept': 'tengo', 'knowledge': 'I have',"accuracy" : [0, 0]}, {'concept': 'te amo', 'knowledge': 'I love you',"accuracy" : [0, 0]}]
+last_item = {}
 current_reviews = []
 groups = []
 current_group = []
@@ -31,8 +32,40 @@ def group_completed (new):
     current_group.clear()
     review_mode = True
     print(review_queue)
-    return
 
+    return
+def shuffle_groups():
+    global groups
+    for group in groups:
+        def sorting_key(item):
+            return item['accuracy'][0] / item['accuracy'][1]
+
+    # Sort the group based on the sorting key
+    sorted_group = sorted(group, key=sorting_key)
+
+    # Perform a weighted shuffle within each accuracy group
+    weighted_groups = []
+    current_accuracy = None
+    current_group = []
+
+    for item in sorted_group:
+        if current_accuracy is None or sorting_key(item) == current_accuracy:
+            current_group.append(item)
+        else:
+            # Shuffle the current group and add it to the weighted_groups
+            random.shuffle(current_group)
+            weighted_groups.extend(current_group)
+
+            # Start a new group
+            current_group = [item]
+            current_accuracy = sorting_key(item)
+
+    # Shuffle the last group and add it to the weighted_groups
+    random.shuffle(current_group)
+    weighted_groups.extend(current_group)
+
+    return weighted_groups
+    return
 class FormWidget(QWidget):
     
     def __init__(self):
@@ -46,6 +79,7 @@ class FormWidget(QWidget):
         
         return
     def group(self):
+        global last_item
         i_e = self.InputEdit
         k_e = self.KnowledgeEdit
         input_edit_text = i_e.text()
@@ -56,6 +90,7 @@ class FormWidget(QWidget):
         
         temp_data.append(temp)
         group_completed(temp)
+        last_item = temp
         i_e.setText("")
         k_e.setText("")
         self.parent().parent().switchToFlashCard(input_edit_text, knowledge_edit_text)
@@ -63,6 +98,9 @@ class FormWidget(QWidget):
 
         print(groups)
     def submit(self):
+        global last_item, review_queue
+        if last_item != {}:
+            review_queue.append(last_item)
         i_e = self.InputEdit
         k_e = self.KnowledgeEdit
         input_edit_text = i_e.text()
@@ -73,6 +111,7 @@ class FormWidget(QWidget):
         
         temp_data.append(temp)
         card_completed(temp)
+        last_item = temp
         i_e.setText("")
         k_e.setText("")
         print(input_edit_text, knowledge_edit_text)
